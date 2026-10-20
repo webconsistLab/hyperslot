@@ -24,8 +24,10 @@ jobs:
           cd ../local-pool && go mod download
           cd ../hyperpanel && go mod download
 
-      - name: Make start.sh executable
-        run: chmod +x start.sh
+      - name: Fix line endings and make executable
+        run: |
+          sed -i 's/\r$//' start.sh
+          chmod +x start.sh
 
       - name: Run Project
         # আপনার কমান্ডটি এখানে দেওয়া হলো
