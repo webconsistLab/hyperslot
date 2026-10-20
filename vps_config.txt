@@ -1,0 +1,27 @@
+# SSH into VPS
+ssh user@your-vps-ip
+
+# 1. Install Go
+wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+
+# 2. Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 3. Install cloudflared
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /tmp/cloudflared
+sudo mv /tmp/cloudflared /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
+
+# 4. Clone/copy your project
+git clone <your-repo> HyperSlot
+# OR scp from local
+# scp -r ./HyperSlot user@vps:/home/user/
+
+# 5. Run
+cd HyperSlot
+chmod +x start.sh
+./start.sh "https://hypers.com.bd/slot"

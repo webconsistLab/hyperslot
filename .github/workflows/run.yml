@@ -1,0 +1,32 @@
+name: Run HyperSlot Automation
+
+on:
+  workflow_dispatch: # ম্যানুয়ালি রান করার জন্য (Run workflow বাটন আসবে)
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # সর্বোচ্চ ৫ ঘন্টা ৫০ মিনিট চলবে (GitHub এর লিমিট ৬ ঘন্টা)
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21' # আপনার go.mod ফাইলে যে ভার্সন আছে সেটি দিন
+
+      - name: Setup Go Modules & Dependencies
+        # extractor, local-pool, panel - তিনটিরই ডিপেন্ডেন্সি ডাউনলোড করা হবে
+        run: |
+          cd oee && go mod download
+          cd ../local-pool && go mod download
+          cd ../hyperpanel && go mod download
+
+      - name: Make start.sh executable
+        run: chmod +x start.sh
+
+      - name: Run Project
+        # আপনার কমান্ডটি এখানে দেওয়া হলো
+        run: ./start.sh "https://appointment.ivacbd.com" --max-wait 350m

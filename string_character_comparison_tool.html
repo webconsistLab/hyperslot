@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>String & Character Comparison Tool</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono-font { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.8); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-code-compare text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight">StringDiff Pro</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Advanced Character & Length Analyzer</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Toggle Theme">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Input Textareas Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- String 1 Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col transition-all hover:shadow-md">
+                <div class="flex items-center justify-between mb-3">
+                    <label for="string1" class="font-semibold text-sm flex items-center space-x-2 text-slate-700 dark:text-slate-200">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                        <span>String 1</span>
+                    </label>
+                    <div class="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span id="len1-badge" class="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg font-medium">Length: 0</span>
+                        <button onclick="clearInput('string1')" class="hover:text-red-500 transition" title="Clear"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+                <textarea id="string1" rows="5" class="w-full flex-grow p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 mono-font text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none transition" placeholder="Paste or type first string here..."></textarea>
+            </div>
+
+            <!-- String 2 Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col transition-all hover:shadow-md">
+                <div class="flex items-center justify-between mb-3">
+                    <label for="string2" class="font-semibold text-sm flex items-center space-x-2 text-slate-700 dark:text-slate-200">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span>String 2</span>
+                    </label>
+                    <div class="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span id="len2-badge" class="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg font-medium">Length: 0</span>
+                        <button onclick="clearInput('string2')" class="hover:text-red-500 transition" title="Clear"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+                <textarea id="string2" rows="5" class="w-full flex-grow p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 mono-font text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none transition" placeholder="Paste or type second string here..."></textarea>
+            </div>
+        </div>
+
+        <!-- Control Actions -->
+        <div class="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+                <button onclick="compareStrings()" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl shadow-lg shadow-brand-500/25 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Compare Now</span>
+                </button>
+                <button onclick="loadSampleData()" class="px-5 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-bolt text-amber-500"></i>
+                    <span>Load Sample Data</span>
+                </button>
+                <button onclick="resetAll()" class="px-4 py-3 text-slate-500 hover:text-red-500 font-medium rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Reset All</span>
+                </button>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="copyReport()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-regular fa-copy"></i>
+                    <span>Copy Summary</span>
+                </button>
+                <button onclick="exportJSON()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Export JSON</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Summary Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Match Status</p>
+                <div id="stat-match-status" class="text-lg font-bold flex items-center space-x-2 text-amber-500">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Not Compared</span>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Length Difference</p>
+                <div id="stat-length-diff" class="text-2xl font-bold text-slate-800 dark:text-slate-100">0</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Mismatches</p>
+                <div id="stat-mismatches-count" class="text-2xl font-bold text-red-500">0</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Similarity Score</p>
+                <div id="stat-similarity" class="text-2xl font-bold text-brand-600 dark:text-brand-400">0%</div>
+            </div>
+        </div>
+
+        <!-- Side-by-Side Diff / Highlight Viewer Section -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-eye text-brand-500"></i>
+                    <span>Visual Side-by-Side Diff Viewer</span>
+                </h3>
+                <span class="text-xs text-slate-500 dark:text-slate-400">Differences highlighted in red/orange</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <!-- Diff Box 1 -->
+                <div>
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">String 1 Highlights</span>
+                    <div id="diff-box-1" class="w-full h-48 overflow-y-auto p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 mono-font text-xs leading-relaxed whitespace-pre-wrap break-all select-all">
+                        <span class="text-slate-400 italic">Run comparison to view highlighted diff...</span>
+                    </div>
+                </div>
+                <!-- Diff Box 2 -->
+                <div>
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">String 2 Highlights</span>
+                    <div id="diff-box-2" class="w-full h-48 overflow-y-auto p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 mono-font text-xs leading-relaxed whitespace-pre-wrap break-all select-all">
+                        <span class="text-slate-400 italic">Run comparison to view highlighted diff...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Mismatch Report Table -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-table-list text-brand-500"></i>
+                    <span>Detailed Mismatch Report Table</span>
+                </h3>
+                <span id="mismatch-count-badge" class="text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full font-medium">0 items</span>
+            </div>
+            <div class="overflow-x-auto max-h-96 rounded-xl border border-slate-200 dark:border-slate-800">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50 sticky top-0 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        <tr>
+                            <th class="p-3.5">Index</th>
+                            <th class="p-3.5">String 1 Char</th>
+                            <th class="p-3.5">String 2 Char</th>
+                            <th class="p-3.5">Status / Note</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mismatch-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm mono-font">
+                        <tr>
+                            <td colspan="4" class="p-6 text-center text-slate-400 italic font-sans">No mismatches recorded or comparison not yet executed.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+        <p>String & Character Comparison Tool &bull; Fully Responsive & Client-Side Secure</p>
+    </footer>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 z-50 text-sm font-medium">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg">Action completed successfully!</span>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Sample data provided by the user
+        const sampleString1 = "1.P4e4USAXfokS_HIY2Y-_mySZ8IWQVWNLYij6ZtdLijbSDhd__gHAsn12g9GrcB-JNFvpoi2tjUQobhNgFjrOgTl1-BO4bte2xWTxVNMW3--w65u9wmxNvNxKdmAmq7D62rSlDMG4pJMnR7rbyYZ4RHoD4monB83fWLCHX-R39YAcFXKz0bpHIpzosWvv09Kmh41NTpPKPp4UVQbjfEaUKB9E1SBfhQ5RrB7_wvSTNkb_TA3xFRECXDu6XfZUluoP-C-IjQc9GxhvQqDrmL-mBDe6-VXeleBDZjBUViWmtq2J6fDQT1dBN9l1Gf0AwNQRcBU_WqMhFkxpmELjWDuCuJaQ-9YS8zoHwV0q2ef_YEzQ1sZ9wD3o9gD3D30xS6z_JEv2y_PUDKnvvqiaybsz2n8VDnZ3KIFqHBOUiD8MmvJ-VG8wZY-lG18CzrR9VyRMqazOp1N7cG7TKUUB7hf0Yup4nsCpeDBxiaEl9tnOVGWEkT_Fmm-oqsnU4iRseM7mx_hdB1URxy9Ieb34-RXTsTdMsT72_PYQKIBf6NpP6hB7MpFtnlsTM9JYRq0_o4j1LU-_hYi9CrEcJAwwVWQ1G6Losi4iMrt8hAyDESrDcNpsVDmwJ4XaPFu0l5p95Vc2pQcnPCf-FnvLG_6P9SB9mdtqtWxDwvEaQPxklJPje3SfFk5uzFeVQerbbqzCS1rP9bxM4zhr0Cvo60L3ej8TmA.6CcI98ffHkvnQwvZwuUK5Q.608aef09dc4e4f7bdde94517f1d68fe93363d2825e900396d370092fc89ff275";
+
+        const sampleString2 = "1.P4e4USnhumGWp2l_Hcbrry1g7jjQVWNLYij6ZtdLijbSDhd__gHAsn12g9GrcB-JNFvpoi2tjUQobhNgFjrOgTl1-BO4bte2xWTxVNMW3--w65u9wmxNvNxKdmAmq7D62rSlDMG4pJMnR7rbyYZ4RHoD4monB83fWLCHX-R39YAcFXKz0bpHIpzosWvv09Kmh41NTpPKPp4UVQbjfEaUKB9E1SBfhQ5RrB7_wvSTNkb_TA3xFRECXDu6XfZUluoP-C-IjQc9GxhvQqDrmL-mBDe6-VXeleBDZjBUViWmtq2J6fDQT1dBN9l1Gf0AwNQRcBU_WqMhFkxpmELjWDuCuJaQ-9YS8zoHwV0q2ef_YEzQ1sZ9wD3o9gD3D30xS6z_JEv2y_PUDKnvvqiaybsz2n8VDnZ3KIFqHBOUiD8MmvJ-VG8wZY-lG18CzrR9VyRMqazOp1N7cG7TKUUB7hf0Yup4nsCpeDBxiaEl9tnOVGWEkT_Fmm-oqsnU4iRseM7mx_hdB1URxy9Ieb34-RXTsTdMsT72_PYQKIBf6NpP6hB7MpFtnlsTM9JYRq0_o4j1LU-_hYi9CrEcJAwwVWQ1G6Losi4iMrt8hAyDESrDcNpsVDmwJ4XaPFu0l5p95Vc2pQcnPCf-FnvLG_6P9SB9mdtqtWxDwvEaQPxklJPje3SfFk5uzFeVQerbbqzCS1rP9bxM4zhr0Cvo60L3ej8TmA.6CcI98ffHkvnQwvZwuUK5Q.608aef09dc4e4f7bdde94517f1d68fe93363d2825e900396d370092fc89ff275";
+
+        // Global state for last comparison result
+        let lastReport = null;
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSampleData();
+            
+            // Listeners for live length badges
+            document.getElementById('string1').addEventListener('input', updateLengthBadges);
+            document.getElementById('string2').addEventListener('input', updateLengthBadges);
+        });
+
+        function updateLengthBadges() {
+            const s1 = document.getElementById('string1').value;
+            const s2 = document.getElementById('string2').value;
+            document.getElementById('len1-badge').innerText = `Length: ${s1.length}`;
+            document.getElementById('len2-badge').innerText = `Length: ${s2.length}`;
+        }
+
+        function loadSampleData() {
+            document.getElementById('string1').value = sampleString1;
+            document.getElementById('string2').value = sampleString2;
+            updateLengthBadges();
+            compareStrings();
+            showToast("Sample data loaded successfully!", "success");
+        }
+
+        function clearInput(id) {
+            document.getElementById(id).value = '';
+            updateLengthBadges();
+        }
+
+        function resetAll() {
+            document.getElementById('string1').value = '';
+            document.getElementById('string2').value = '';
+            updateLengthBadges();
+            
+            // Reset stats
+            document.getElementById('stat-match-status').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span>Not Compared</span>`;
+            document.getElementById('stat-match-status').className = "text-lg font-bold flex items-center space-x-2 text-amber-500";
+            document.getElementById('stat-length-diff').innerText = '0';
+            document.getElementById('stat-mismatches-count').innerText = '0';
+            document.getElementById('stat-similarity').innerText = '0%';
+            
+            // Reset diff viewers
+            document.getElementById('diff-box-1').innerHTML = `<span class="text-slate-400 italic">Run comparison to view highlighted diff...</span>`;
+            document.getElementById('diff-box-2').innerHTML = `<span class="text-slate-400 italic">Run comparison to view highlighted diff...</span>`;
+            
+            // Reset table
+            document.getElementById('mismatch-table-body').innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400 italic font-sans">No mismatches recorded or comparison not yet executed.</td></tr>`;
+            document.getElementById('mismatch-count-badge').innerText = '0 items';
+            
+            lastReport = null;
+            showToast("All fields cleared.", "info");
+        }
+
+        // Core comparison function
+        function compareStrings() {
+            const str1 = document.getElementById('string1').value;
+            const str2 = document.getElementById('string2').value;
+
+            const len1 = str1.length;
+            const len2 = str2.length;
+            const lengthDiff = Math.abs(len1 - len2);
+            const isExact = (str1 === str2);
+
+            let differences = [];
+            const maxLength = Math.max(len1, len2);
+
+            for (let i = 0; i < maxLength; i++) {
+                const c1 = i < len1 ? str1[i] : null;
+                const c2 = i < len2 ? str2[i] : null;
+
+                if (c1 !== c2) {
+                    differences.push({
+                        index: i,
+                        char1: c1,
+                        char2: c2,
+                        type: c1 === null ? 'Added in String 2' : (c2 === null ? 'Removed in String 2' : 'Mismatch')
+                    });
+                }
+            }
+
+            // Calculate similarity score percentage
+            let matchingCount = maxLength - differences.length;
+            let similarity = maxLength === 0 ? 100 : Math.max(0, ((matchingCount / maxLength) * 100)).toFixed(1);
+
+            lastReport = {
+                timestamp: new Date().toISOString(),
+                length1: len1,
+                length2: len2,
+                lengthDifference: lengthDiff,
+                isExactMatch: isExact,
+                totalMismatches: differences.length,
+                similarityScore: similarity + '%',
+                differences: differences
+            };
+
+            // Update UI Stats
+            const statusEl = document.getElementById('stat-match-status');
+            if (isExact) {
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>Exact Match</span>`;
+                statusEl.className = "text-lg font-bold flex items-center space-x-2 text-emerald-500";
+            } else {
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-xmark"></i><span>Mismatched</span>`;
+                statusEl.className = "text-lg font-bold flex items-center space-x-2 text-rose-500";
+            }
+
+            document.getElementById('stat-length-diff').innerText = lengthDiff;
+            document.getElementById('stat-mismatches-count').innerText = differences.length;
+            document.getElementById('stat-similarity').innerText = similarity + '%';
+
+            // Render Diff Viewers
+            renderDiffViewers(str1, str2, differences);
+
+            // Render Table
+            renderMismatchTable(differences);
+
+            showToast("Comparison completed successfully!", "success");
+        }
+
+        function renderDiffViewers(str1, str2, diffs) {
+            const diffIndices = new Set(diffs.map(d => d.index));
+            
+            let html1 = '';
+            for (let i = 0; i < str1.length; i++) {
+                const char = escapeHtml(str1[i]);
+                if (diffIndices.has(i)) {
+                    html1 += `<span class="bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold px-0.5 rounded border border-rose-500/30" title="Index ${i}: '${str1[i]}'">${char === ' ' ? '&nbsp;' : char}</span>`;
+                } else {
+                    html1 += char === ' ' ? '&nbsp;' : char;
+                }
+            }
+
+            let html2 = '';
+            for (let i = 0; i < str2.length; i++) {
+                const char = escapeHtml(str2[i]);
+                if (diffIndices.has(i)) {
+                    html2 += `<span class="bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold px-0.5 rounded border border-amber-500/30" title="Index ${i}: '${str2[i]}'">${char === ' ' ? '&nbsp;' : char}</span>`;
+                } else {
+                    html2 += char === ' ' ? '&nbsp;' : char;
+                }
+            }
+
+            document.getElementById('diff-box-1').innerHTML = html1 || '<span class="text-slate-400 italic">Empty string</span>';
+            document.getElementById('diff-box-2').innerHTML = html2 || '<span class="text-slate-400 italic">Empty string</span>';
+        }
+
+        function renderMismatchTable(diffs) {
+            const tbody = document.getElementById('mismatch-table-body');
+            document.getElementById('mismatch-count-badge').innerText = `${diffs.length} items`;
+
+            if (diffs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-emerald-600 dark:text-emerald-400 font-sans font-medium"><i class="fa-solid fa-circle-check mr-2"></i>Strings are 100% identical! No mismatches found.</td></tr>`;
+                return;
+            }
+
+            let rows = '';
+            diffs.forEach(d => {
+                const char1Display = d.char1 === null ? '<span class="text-slate-400 italic text-xs">[End]</span>' : `&#39;${escapeHtml(d.char1)}&#39;`;
+                const char2Display = d.char2 === null ? '<span class="text-slate-400 italic text-xs">[End]</span>' : `&#39;${escapeHtml(d.char2)}&#39;`;
+                
+                rows += `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                        <td class="p-3.5 text-slate-500 font-semibold">${d.index}</td>
+                        <td class="p-3.5 text-rose-600 dark:text-rose-400 font-bold">${char1Display}</td>
+                        <td class="p-3.5 text-amber-600 dark:text-amber-400 font-bold">${char2Display}</td>
+                        <td class="p-3.5 text-xs font-sans text-slate-500 dark:text-slate-400"><span class="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800">${d.type}</span></td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = rows;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function copyReport() {
+            if (!lastReport) {
+                compareStrings();
+            }
+            const summaryText = `=== String Comparison Summary ===\n- Length 1: ${lastReport.length1}\n- Length 2: ${lastReport.length2}\n- Difference: ${lastReport.lengthDifference}\n- Exact Match: ${lastReport.isExactMatch}\n- Total Mismatches: ${lastReport.totalMismatches}\n- Similarity: ${lastReport.similarityScore}`;
+            
+            // Fallback copy method
+            const textarea = document.createElement('textarea');
+            textarea.value = summaryText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast("Summary copied to clipboard!", "success");
+            } catch (err) {
+                showToast("Failed to copy summary.", "error");
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function exportJSON() {
+            if (!lastReport) {
+                compareStrings();
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(lastReport, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `string_comparison_report_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast("Report exported as JSON!", "success");
+        }
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = "fa-solid fa-sun";
+            } else {
+                html.classList.add('dark');
+                icon.className = "fa-solid fa-moon";
+            }
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            const toastIcon = document.getElementById('toast-icon');
+            
+            toastMsg.innerText = msg;
+            if (type === 'success') {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+            } else if (type === 'info') {
+                toastIcon.className = "fa-solid fa-circle-info text-blue-400";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

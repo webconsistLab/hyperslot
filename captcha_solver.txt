@@ -1,0 +1,186 @@
+// ==UserScript==
+// @name         captcha_sender
+// @namespace    http://hypers.com.bd/
+// @version      2026-09-30
+// @description  Send Turnstile token to cloud captcha pool
+// @author       You
+// @match        https://appointment.ivacbd.com/signin
+// @match        https://appointment.ivacbd.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=ivacbd.com
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ═══════════════════════════════════════════════════════════════
+    // Config
+    // ═══════════════════════════════════════════════════════════════
+
+    const CLOUD_URL = "https://solved-captcha-358970714333.asia-south1.run.app/captcha/solved";
+    const SEND_INTERVAL = 500; // ms — DOM check frequency
+    const DEDUP_MS = 60000;    // 60s — avoid sending same token
+
+    let lastToken = "";
+    let lastSentAt = 0;
+    let sentCount = 0;
+    let failCount = 0;
+
+    // ═══════════════════════════════════════════════════════════════
+    // Logging
+    // ═══════════════════════════════════════════════════════════════
+
+    function log(...args) {
+        console.log('%c[UPLOAD]', 'color:#00d4ff;font-weight:bold', ...args);
+    }
+
+    function logSuccess(...args) {
+        console.log('%c[UPLOAD]', 'color:#00b894;font-weight:bold', ...args);
+    }
+
+    function logError(...args) {
+        console.error('%c[UPLOAD]', 'color:#ff6b6b;font-weight:bold', ...args);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Send Token to Cloud
+    // ═══════════════════════════════════════════════════════════════
+
+    async function sendToken(token) {
+        if (!token || token.length < 20) return;
+        if (token === lastToken && Date.now() - lastSentAt < DEDUP_MS) return;
+
+        lastToken = token;
+        lastSentAt = Date.now();
+
+        log('📤 sending token (len=' + token.length + ')');
+
+        try {
+            const resp = await fetch(CLOUD_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    raw_token: token,
+                    source: location.hostname + location.pathname,
+                }),
+            });
+
+            const data = await resp.json();
+
+            if (resp.ok && data.success) {
+                sentCount++;
+                logSuccess('✅ sent #' + sentCount,
+                    '| queue:', data.queue_size,
+                    '| expires_in:', data.expires_in?.toFixed(1) + 's');
+
+                // Turnstile reset (নতুন token-এর জন্য)
+                if (window.turnstile && typeof window.turnstile.reset === 'function') {
+                    try {
+                        window.turnstile.reset();
+                        log('🔄 turnstile reset');
+                    } catch (e) {
+                        log('turnstile reset failed:', e.message);
+                    }
+                }
+            } else {
+                failCount++;
+                logError('❌ send failed', resp.status, data);
+            }
+        } catch (err) {
+            failCount++;
+            logError('❌ send error:', err.message);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Token Detection
+    // ═══════════════════════════════════════════════════════════════
+
+    function checkExistingToken() {
+        // 1. cf-turnstile-response input
+        const input = document.querySelector('input[name="cf-turnstile-response"]');
+        if (input && input.value && input.value.length > 20) {
+            sendToken(input.value);
+            return;
+        }
+
+        // 2. Any hidden captcha input
+        const inputs = document.querySelectorAll(
+            'input[name*="captcha"], input[name*="turnstile"]'
+        );
+        for (const inp of inputs) {
+            if (inp.value && inp.value.length > 20) {
+                sendToken(inp.value);
+                return;
+            }
+        }
+
+        // 3. Global window variables
+        const globals = ['captchaToken', 'turnstileToken', 'cfTurnstileToken'];
+        for (const g of globals) {
+            const v = window[g];
+            if (typeof v === 'string' && v.length > 20) {
+                sendToken(v);
+                return;
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DOM Watcher (MutationObserver)
+    // ═══════════════════════════════════════════════════════════════
+
+    const observer = new MutationObserver(() => {
+        checkExistingToken();
+    });
+
+    // Body watch করি
+    if (document.body) {
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['value'],
+        });
+    } else {
+        // Body এখনো ready না হলে wait
+        document.addEventListener('DOMContentLoaded', () => {
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['value'],
+            });
+            checkExistingToken();
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Fallback Polling (হর 500ms — DOM mutation miss হলে ধরার জন্য)
+    // ═══════════════════════════════════════════════════════════════
+
+    setInterval(checkExistingToken, SEND_INTERVAL);
+
+    // ═══════════════════════════════════════════════════════════════
+    // Startup
+    // ═══════════════════════════════════════════════════════════════
+
+    log('═══════════════════════════════════════════════');
+    log(' 🎯 Turnstile Token Uploader');
+    log('═══════════════════════════════════════════════');
+    log(' cloud:', CLOUD_URL);
+    log(' match:', location.href);
+    log('═══════════════════════════════════════════════');
+
+    // Initial check
+    checkExistingToken();
+
+    // Public API (debug)
+    window.__uploader = {
+        send: sendToken,
+        check: checkExistingToken,
+        status: function() {
+            return { sent: sentCount, failed: failCount, lastToken: lastToken.slice(0, 20) + '...' };
+        },
+    };
+})();

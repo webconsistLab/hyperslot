@@ -1,0 +1,496 @@
+(function() {
+    'use strict';
+
+    // ═══════════════════════════════════════════════════════════════
+    // ⚙️  Configuration
+    // ═══════════════════════════════════════════════════════════════
+    const SITEKEY = "0x4AAAAAACghKkJHL1t7UkuZ";
+    const WIDGET_COUNT = 20;
+    const SUBMIT_URL = "https://solved-captcha-358970714333.asia-south1.run.app/captcha/solved";
+    const CONTAINER_ID = "turnstile-harvester";
+
+    const MIN_RESET_DELAY_MS = 3000;
+    const MAX_RESET_DELAY_MS = 8000;
+    const MAX_PARALLEL_SOLVE = 5;
+    const SUBMIT_TIMEOUT_MS = 15000;
+
+    console.log("%c[Harvester] 🚀 Starting...", "color:#00d4ff;font-weight:bold");
+
+    // ═══════════════════════════════════════════════════════════════
+    // 1. Cleanup old instance
+    // ═══════════════════════════════════════════════════════════════
+    if (window.__harvesterLoaded) {
+        console.warn("[Harvester] ⚠️  Cleaning up old instance...");
+        try {
+            if (window.__harvesterDestroy) window.__harvesterDestroy();
+        } catch (e) { console.warn("Old destroy failed:", e); }
+        const old = document.getElementById(CONTAINER_ID);
+        if (old) old.remove();
+    }
+    window.__harvesterLoaded = true;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 2. Stats
+    // ═══════════════════════════════════════════════════════════════
+    const stats = {
+        solved: 0,
+        submitted: 0,
+        failed: 0,
+        errors: 0,
+        startTime: Date.now(),
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    // 3. Container
+    // ═══════════════════════════════════════════════════════════════
+    const container = document.createElement("div");
+    container.id = CONTAINER_ID;
+    container.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 999999; background: rgba(10, 10, 15, 0.97);
+        padding: 12px; overflow-y: auto;
+        font-family: 'Segoe UI', sans-serif; color: #e0e0e0; font-size: 12px;
+    `;
+
+    const header = document.createElement("div");
+    header.style.cssText = `
+        position: sticky; top: 0;
+        background: rgba(20, 20, 30, 0.98);
+        border: 1px solid #00d4ff; border-radius: 8px;
+        padding: 10px 16px; margin-bottom: 12px;
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 16px; flex-wrap: wrap; z-index: 10;
+    `;
+    header.innerHTML = `
+        <div style="font-weight:bold;color:#00d4ff;font-size:14px;">
+            🎯 Turnstile Harvester — ${WIDGET_COUNT} widgets
+        </div>
+        <div id="ts-stats" style="font-size:12px;color:#ccc;display:flex;gap:16px;flex-wrap:wrap;">Initializing...</div>
+        <div style="display:flex;gap:6px;">
+            <button id="ts-toggle" style="background:#00d4ff;color:#000;border:none;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:600;">⏸ Pause</button>
+            <button id="ts-close" style="background:#ff6b6b;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:600;">✕ Close</button>
+        </div>
+    `;
+    container.appendChild(header);
+
+    // ★★★ FIXED: NULL-safe updateStats
+    function updateStats() {
+        const el = document.getElementById("ts-stats");
+        if (!el) return;  // ★ element না থাকলে skip
+
+        const elapsed = ((Date.now() - stats.startTime) / 1000).toFixed(0);
+        const rate = elapsed > 0 ? (stats.submitted / elapsed * 60).toFixed(1) : "0.0";
+        el.innerHTML = `
+            ✅ Solved: <b style="color:#00b894">${stats.solved}</b> |
+            📤 Submitted: <b style="color:#00d4ff">${stats.submitted}</b> |
+            ❌ Failed: <b style="color:#ff6b6b">${stats.failed}</b> |
+            💥 Errors: <b style="color:#e17055">${stats.errors}</b> |
+            ⏱️  ${elapsed}s | 🚀 <b style="color:#fdcb6e">${rate}/min</b>
+        `;
+    }
+
+    updateStats();
+    // ★★★ FIXED: interval handle save
+    let statsInterval = setInterval(updateStats, 1000);
+
+    // ═══════════════════════════════════════════════════════════════
+    // 4. Grid
+    // ═══════════════════════════════════════════════════════════════
+    const grid = document.createElement("div");
+    grid.id = "ts-grid";
+    grid.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 10px;
+    `;
+    container.appendChild(grid);
+
+    // ★★★ FIXED: body exist না হলে wait
+    function attachToBody() {
+        if (document.body) {
+            document.body.appendChild(container);
+        } else {
+            setTimeout(attachToBody, 100);
+        }
+    }
+    attachToBody();
+
+    // ═══════════════════════════════════════════════════════════════
+    // 5. Widget Card
+    // ═══════════════════════════════════════════════════════════════
+    function createWidgetCard(index) {
+        const card = document.createElement("div");
+        card.id = `ts-card-${index}`;
+        card.style.cssText = `
+            background: #0a0a0f; border: 1px solid #2a2a3e;
+            border-radius: 8px; padding: 10px; position: relative;
+            transition: all 0.3s ease;
+        `;
+
+        const head = document.createElement("div");
+        head.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;";
+        head.innerHTML = `
+            <span style="font-size:11px;color:#666;font-weight:600;">#${index + 1}</span>
+            <span id="ts-badge-${index}" style="font-size:10px;color:#888;">⏳ idle</span>
+        `;
+        card.appendChild(head);
+
+        const wDiv = document.createElement("div");
+        wDiv.id = `ts-widget-${index}`;
+        wDiv.style.cssText = "min-height:65px;display:flex;align-items:center;justify-content:center;";
+        card.appendChild(wDiv);
+
+        const logLine = document.createElement("div");
+        logLine.id = `ts-log-${index}`;
+        logLine.style.cssText = "font-size:10px;color:#555;margin-top:6px;min-height:12px;word-break:break-all;";
+        card.appendChild(logLine);
+
+        return card;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 6. Safe Logging
+    // ═══════════════════════════════════════════════════════════════
+    function setBadge(i, text, color) {
+        const b = document.getElementById(`ts-badge-${i}`);
+        if (b) { b.textContent = text; b.style.color = color || "#888"; }
+    }
+    function setLog(i, text) {
+        const l = document.getElementById(`ts-log-${i}`);
+        if (l) l.textContent = text;
+    }
+    function setCardBorder(i, color) {
+        const c = document.getElementById(`ts-card-${i}`);
+        if (c) c.style.borderColor = color || "#2a2a3e";
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 7. Submit
+    // ═══════════════════════════════════════════════════════════════
+    async function submitToken(token, widgetIndex) {
+        try {
+            setBadge(widgetIndex, "📤 sending...", "#00d4ff");
+            setLog(widgetIndex, `POST ${token.substring(0, 30)}...`);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), SUBMIT_TIMEOUT_MS);
+
+            const resp = await fetch(SUBMIT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    token: token,
+                    raw_token: token,
+                    widget_index: widgetIndex,
+                    timestamp: Date.now(),
+                    source: "turnstile-harvester",
+                }),
+                signal: controller.signal,
+                mode: "cors",
+            });
+
+            clearTimeout(timeoutId);
+            const body = await resp.text();
+
+            if (resp.ok) {
+                stats.submitted++;
+                setBadge(widgetIndex, "✅ submitted", "#00b894");
+                setLog(widgetIndex, `✅ HTTP ${resp.status} | ${body.substring(0, 60)}`);
+                console.log(`%c[Harvester] ✅ #${widgetIndex + 1} submitted (HTTP ${resp.status})`,
+                    "color:#00b894");
+                return true;
+            } else {
+                stats.failed++;
+                setBadge(widgetIndex, `❌ HTTP ${resp.status}`, "#ff6b6b");
+                setLog(widgetIndex, `❌ ${resp.status}: ${body.substring(0, 80)}`);
+                return false;
+            }
+        } catch (err) {
+            stats.failed++;
+            const msg = err.name === "AbortError" ? "timeout" : err.message;
+            setBadge(widgetIndex, "❌ net error", "#ff6b6b");
+            setLog(widgetIndex, `❌ ${msg}`);
+            return false;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 8. State
+    // ═══════════════════════════════════════════════════════════════
+    const widgetState = [];
+    for (let i = 0; i < WIDGET_COUNT; i++) {
+        widgetState.push({
+            renderId: null,
+            solving: false,
+            cycleCount: 0,
+            totalTokens: 0,
+        });
+    }
+
+    let globalPaused = false;
+    let destroyed = false;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 9. Render Widget
+    // ═══════════════════════════════════════════════════════════════
+    function renderWidget(index) {
+        if (destroyed || globalPaused) return;
+        const st = widgetState[index];
+        if (st.solving) return;
+
+        const wDiv = document.getElementById(`ts-widget-${index}`);
+        if (!wDiv) return;
+
+        st.solving = true;
+        setCardBorder(index, "#00d4ff");
+        setBadge(index, "⏳ solving...", "#00d4ff");
+        setLog(index, "Turnstile executing...");
+
+        try {
+            st.renderId = turnstile.render(`#ts-widget-${index}`, {
+                sitekey: SITEKEY,
+                theme: "dark",
+                size: "normal",
+
+                callback: async (token) => {
+                    st.solving = false;
+                    st.totalTokens++;
+                    stats.solved++;
+                    setCardBorder(index, "#00b894");
+                    setBadge(index, `✅ token #${st.totalTokens}`, "#00b894");
+                    setLog(index, `solved: ${token.substring(0, 40)}...`);
+                    console.log(`%c[Harvester] ✅ Widget #${index + 1} solved (cycle ${st.cycleCount + 1})`,
+                        "color:#00b894");
+
+                    const ok = await submitToken(token, index);
+
+                    if (!destroyed && !globalPaused) {
+                        const delay = MIN_RESET_DELAY_MS +
+                            Math.random() * (MAX_RESET_DELAY_MS - MIN_RESET_DELAY_MS);
+                        setBadge(index, `⏸ reset in ${(delay / 1000).toFixed(1)}s`, "#fdcb6e");
+                        setLog(index, `${ok ? "✅" : "❌"} next cycle in ${(delay / 1000).toFixed(1)}s`);
+
+                        setTimeout(() => {
+                            if (destroyed) return;
+                            st.cycleCount++;
+                            resetAndReRender(index);
+                        }, delay);
+                    } else {
+                        setBadge(index, "⏸ paused", "#fdcb6e");
+                    }
+                },
+
+                "error-callback": (err) => {
+                    st.solving = false;
+                    stats.errors++;
+                    setCardBorder(index, "#ff6b6b");
+                    setBadge(index, `💥 error`, "#ff6b6b");
+                    setLog(index, `error: ${String(err).substring(0, 60)}`);
+                    console.error(`[Harvester] #${index + 1} error:`, err);
+
+                    if (!destroyed && !globalPaused) {
+                        const delay = 5000 + Math.random() * 5000;
+                        setBadge(index, `⏸ retry in ${(delay/1000).toFixed(0)}s`, "#fdcb6e");
+                        setTimeout(() => {
+                            if (destroyed) return;
+                            st.cycleCount++;
+                            resetAndReRender(index);
+                        }, delay);
+                    }
+                },
+
+                "expired-callback": () => {
+                    setBadge(index, "⏰ expired", "#fdcb6e");
+                },
+
+                "timeout-callback": () => {
+                    setBadge(index, "⌛ timeout", "#fdcb6e");
+                },
+
+                "refresh-expired": "manual",
+                "refresh-timeout": "never",
+                "retry": "auto",
+                "appearance": "always",
+            });
+        } catch (e) {
+            st.solving = false;
+            stats.errors++;
+            setCardBorder(index, "#ff6b6b");
+            setBadge(index, "💥 render fail", "#ff6b6b");
+            setLog(index, String(e).substring(0, 60));
+            console.error(`[Harvester] #${index + 1} render failed:`, e);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 10. Reset
+    // ═══════════════════════════════════════════════════════════════
+    function resetAndReRender(index) {
+        if (destroyed) return;
+        const st = widgetState[index];
+
+        try {
+            if (st.renderId !== null) {
+                turnstile.reset(st.renderId);
+            }
+        } catch (e) {
+            console.warn(`Reset #${index + 1} failed:`, e);
+        }
+
+        const wDiv = document.getElementById(`ts-widget-${index}`);
+        if (wDiv) wDiv.innerHTML = "";
+
+        st.renderId = null;
+        st.solving = false;
+
+        setTimeout(() => renderWidget(index), 200);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 11. Start
+    // ═══════════════════════════════════════════════════════════════
+    async function startHarvesting() {
+        console.log("[Harvester] 🎨 Building grid...");
+
+        for (let i = 0; i < WIDGET_COUNT; i++) {
+            const card = createWidgetCard(i);
+            grid.appendChild(card);
+        }
+
+        console.log(`[Harvester] 🚀 Launching in batches of ${MAX_PARALLEL_SOLVE}...`);
+
+        for (let i = 0; i < WIDGET_COUNT; i += MAX_PARALLEL_SOLVE) {
+            if (destroyed) return;
+            for (let j = i; j < Math.min(i + MAX_PARALLEL_SOLVE, WIDGET_COUNT); j++) {
+                renderWidget(j);
+                await new Promise(r => setTimeout(r, 500));
+            }
+            if (i + MAX_PARALLEL_SOLVE < WIDGET_COUNT) {
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
+
+        console.log("[Harvester] ✅ All widgets launched.");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 12. Controls — ★★★ FIXED: setTimeout + NULL check
+    // ═══════════════════════════════════════════════════════════════
+    setTimeout(() => {
+        const toggleBtn = document.getElementById("ts-toggle");
+        if (toggleBtn) {
+            toggleBtn.onclick = function() {
+                globalPaused = !globalPaused;
+                this.textContent = globalPaused ? "▶ Resume" : "⏸ Pause";
+                this.style.background = globalPaused ? "#00b894" : "#00d4ff";
+                console.log(`[Harvester] ${globalPaused ? "⏸ PAUSED" : "▶ RESUMED"}`);
+
+                if (!globalPaused) {
+                    for (let i = 0; i < WIDGET_COUNT; i++) {
+                        const st = widgetState[i];
+                        if (!st.solving) renderWidget(i);
+                    }
+                }
+            };
+        }
+
+        const closeBtn = document.getElementById("ts-close");
+        if (closeBtn) {
+            closeBtn.onclick = function() {
+                if (!confirm("Stop harvester and remove all widgets?")) return;
+                destroyed = true;
+                window.__harvesterLoaded = false;
+
+                // ★ interval clear
+                if (statsInterval) {
+                    clearInterval(statsInterval);
+                    statsInterval = null;
+                }
+
+                for (let i = 0; i < WIDGET_COUNT; i++) {
+                    try {
+                        if (widgetState[i].renderId !== null) {
+                            turnstile.reset(widgetState[i].renderId);
+                        }
+                    } catch (e) {}
+                }
+
+                container.remove();
+                console.log("[Harvester] 🛑 Stopped. Total submitted:", stats.submitted);
+            };
+        }
+    }, 100);
+
+    window.__harvesterDestroy = function() {
+        destroyed = true;
+        if (statsInterval) {                       // ★ interval clear
+            clearInterval(statsInterval);
+            statsInterval = null;
+        }
+        for (let i = 0; i < WIDGET_COUNT; i++) {
+            try {
+                if (widgetState[i].renderId !== null) {
+                    turnstile.reset(widgetState[i].renderId);
+                }
+            } catch (e) {}
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    // 13. Global Helpers
+    // ═══════════════════════════════════════════════════════════════
+    window.harvesterStats = () => ({...stats});
+    window.harvesterStop = () => {
+        const b = document.getElementById("ts-close");
+        if (b) b.click();
+    };
+    window.harvesterPause = () => {
+        const b = document.getElementById("ts-toggle");
+        if (b) b.click();
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    // 14. Load API
+    // ═══════════════════════════════════════════════════════════════
+    function ensureTurnstileAPI(callback) {
+        if (window.turnstile && window.turnstile.render) {
+            console.log("[Harvester] ✅ Turnstile API already present");
+            callback();
+            return;
+        }
+
+        document.querySelectorAll('script[src*="challenges.cloudflare.com/turnstile"]').forEach(s => {
+            if (!s.src.includes("render=explicit")) s.remove();
+        });
+
+        console.log("[Harvester] ⏳ Loading Turnstile API...");
+
+        const script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=__harvesterOnload";
+        script.async = true;
+        script.defer = true;
+
+        window.__harvesterOnload = function() {
+            console.log("[Harvester] ✅ Turnstile API loaded");
+            callback();
+        };
+
+        setTimeout(() => {
+            if (window.turnstile && window.turnstile.render) {
+                callback();
+            } else {
+                console.error("[Harvester] ❌ API timeout");
+            }
+        }, 8000);
+
+        document.head.appendChild(script);
+    }
+
+    ensureTurnstileAPI(() => {
+        setTimeout(startHarvesting, 300);
+    });
+
+    console.log("%c[Harvester] ✅ Loaded. harvesterStats() | harvesterStop() | harvesterPause()",
+        "color:#00b894;font-weight:bold");
+
+})();
