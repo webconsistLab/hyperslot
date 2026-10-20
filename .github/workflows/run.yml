@@ -24,11 +24,11 @@ jobs:
           cd ../local-pool && go mod download
           cd ../hyperpanel && go mod download
 
-      - name: Fix line endings and make executable
+      - name: Run Project (Force Bash)
         run: |
+          # ১. ফাইলের এনকোডিং এবং পারমিশন ঠিক করা
           sed -i 's/\r$//' start.sh
           chmod +x start.sh
-
-      - name: Run Project
-        # আপনার কমান্ডটি এখানে দেওয়া হলো
-        run: ./start.sh "https://appointment.ivacbd.com" --max-wait 350m
+          
+          # ২. সরাসরি bash দিয়ে রান করা, যাতে শেব্যাং (#!) এর সমস্যা না হয়
+          bash start.sh "https://appointment.ivacbd.com" --max-wait 350m
